@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>默认点标记</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css"/>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+        }
+
+        .amap-icon img,
+        .amap-marker-content img{
+            width: 25px;
+            height: 34px;
+        }
+
+        .marker {
+            position: absolute;
+            top: -20px;
+            right: -118px;
+            color: #fff;
+            padding: 4px 10px;
+            box-shadow: 1px 1px 1px rgba(10, 10, 10, .2);
+            white-space: nowrap;
+            font-size: 12px;
+            font-family: "";
+            background-color: #25A5F7;
+            border-radius: 3px;
+        }
+
+        .input-card{
+            width: 18rem;
+            z-index: 170;
+        }
+
+        .input-card .btn{
+            margin-right: .8rem;
+        }
+
+        .input-card .btn:last-child{
+            margin-right: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+<div class="input-card">
+    <label style="color:grey">查看送货地点</label>
+    <div class="input-item">
+        <input id="addMarker" type="button" class="btn" onclick="getAllPlacePoint()" value="查看送货地点">
+    </div>
+</div>
+<script>
+    const btn = document.getElementById("addMarker");
+    btn.onclick = function(){
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET' , 'http://localhost:8080/orders/frontDTO?date=2021-01-12');
+        xhr.send();
+        xhr.onreadystatechange = function (){
+            if (xhr.readyState === 4 ){
+                if (xhr.status >= 200 && xhr.status < 300){
+                    console.log(xhr.status);
+                    console.log(xhr.statusText);
+                    console.log(xhr.getAllResponseHeaders());
+                    console.log(xhr.response);
+                }
+            }
+        }
+    }
+</script>
+<script type="text/javascript"
+        src="https://webapi.amap.com/maps?v=1.4.15&key=b1c055483940468e4887bd59ef12ab30"></script>
+<script type="text/javascript">
+    var position = new AMap.LngLat(120.041114, 30.228378);
+
+    // 创建地图实例
+    var marker,map = new AMap.Map("container", {
+        resizeEnable: true,
+        center: position,
+        zoom: 13
+    });
+
+    function getAllPlacePoint() {
+        marker = new AMap.Marker({
+            icon: "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+            position: position,
+            offset: new AMap.Pixel(-13, -30)
+        });
+        // 自定义点标记内容
+        var markerContent = document.createElement("div");
+        // 点标记中的图标
+        var markerImg = document.createElement("img");
+        markerImg.className = "markerlnglat";
+        markerImg.src = "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png";
+        markerContent.appendChild(markerImg);
+        var markerSpan = document.createElement("span");
+        markerSpan.className = 'marker';
+        markerSpan.innerHTML = "浙江工业大学屏峰校区";
+        markerContent.appendChild(markerSpan);
+
+        marker.setContent(markerContent); //更新点标记内容
+        map.add(marker);
+
+        createMarker(120.106237 , 30.316105 , "融信学院府")
+        // marker = new AMap.Marker({
+        //     icon: "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+        //     position: [120.106237, 30.316105],
+        //     offset: new AMap.Pixel(-13, -30)
+        // });
+        // // 自定义点标记内容
+        // var markerContent = document.createElement("div");
+        // // 点标记中的图标
+        // var markerImg = document.createElement("img");
+        // markerImg.className = "markerlnglat";
+        // markerImg.src = "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png";
+        // markerContent.appendChild(markerImg);
+        // var markerSpan = document.createElement("span");
+        // markerSpan.className = 'marker';
+        // markerSpan.innerHTML = "融信学院府";
+        // markerContent.appendChild(markerSpan);
+        //
+        // marker.setContent(markerContent); //更新点标记内容
+        // map.add(marker);
+    }
+
+    function createMarker(lng,lat,name){
+        marker = new AMap.Marker({
+            icon: "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+            position: [lng, lat],
+            offset: new AMap.Pixel(-13, -30)
+        });
+        // 自定义点标记内容
+        var markerContent = document.createElement("div");
+        // 点标记中的图标
+        var markerImg = document.createElement("img");
+        markerImg.className = "markerlnglat";
+        markerImg.src = "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png";
+        markerContent.appendChild(markerImg);
+        var markerSpan = document.createElement("span");
+        markerSpan.className = 'marker';
+        markerSpan.innerHTML = name;
+        markerContent.appendChild(markerSpan);
+
+        marker.setContent(markerContent); //更新点标记内容
+        map.add(marker);
+    }
+
+</script>
+</body>
+</html>

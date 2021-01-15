@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>物流拼单系统前端展示</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css"/>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+        }
+
+        .amap-icon img,
+        .amap-marker-content img{
+            width: 25px;
+            height: 34px;
+        }
+
+        .marker {
+            position: absolute;
+            top: -20px;
+            right: -118px;
+            color: #fff;
+            padding: 4px 10px;
+            box-shadow: 1px 1px 1px rgba(10, 10, 10, .2);
+            white-space: nowrap;
+            font-size: 12px;
+            font-family: "";
+            background-color: #25A5F7;
+            border-radius: 3px;
+        }
+
+        .input-card{
+            width: 18rem;
+            z-index: 170;
+        }
+
+        .input-card .btn{
+            margin-right: .8rem;
+        }
+
+        .input-card .btn:last-child{
+            margin-right: 0;
+        }
+        .carInformation{
+            z-index: 999;
+        }
+
+        .carInformation {
+            flex-direction: column;
+            min-width: 0;
+            word-wrap: break-word;
+            background-color: #fff;
+            background-clip: border-box;
+            border-radius: .25rem;
+            width: 18rem;
+            border-width: 0;
+            border-radius: 0.4rem;
+            box-shadow: 0 2px 6px 0 rgba(114, 124, 245, .5);
+            position: absolute;
+            bottom: 10rem;
+            right: 1rem;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+            padding: 0.75rem 1.25rem;
+            height: 6rem;
+        }
+
+        .carTextInformation {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            word-wrap: break-word;
+            background-color: #fff;
+            background-clip: border-box;
+            border-radius: .25rem;
+            width: 18rem;
+            border-width: 0;
+            position: fixed;
+            bottom: 9rem;
+            right: 1rem;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+            padding: 0.75rem 1.25rem;
+            height: 5em;
+        }
+
+
+        #box{width:250px;height:300px;border:1px solid #e5e5e5;background:#f1f1f1;}
+    </style>
+</head>
+<body>
+<div id="container"></div>
+<div class="input-card" >
+    <label style="color:grey">控制台</label>
+    <label style="display: inline-block">日期:</label>
+    <input id="date1" class="date1" type="date" style="display: inline-block;position: absolute;top: 33px;left: 45px;width: 130px;height: 18px">
+    <div class="input-item">
+        <input id="getAllPlacePoint" type="button" class="btn" onclick="getAllPlacePoint()" value="查看送货地点">
+        <input id="showCarAccount" type="button" style="display: none" class="btn" onclick="showCarAccont() " value="分配货车">
+    </div>
+</div>
+<div class="carInformation" style="display: none" id="carInformation">
+    <label style="color:grey">派车情况：</label>
+    <div  class="carTextInformation" id="carText" ></div>
+</div>
+<script type="text/javascript"
+        src="https://webapi.amap.com/maps?v=1.4.15&key=b1c055483940468e4887bd59ef12ab30"></script>
+<script type="text/javascript">
+    var position = new AMap.LngLat(120.041114, 30.228378);
+
+    // 创建地图实例
+    var marker,map = new AMap.Map("container", {
+        resizeEnable: true,
+        center: position,
+        zoom: 13
+    });
+
+    var totalVolume = 0;
+    function getAllPlacePoint() {
+        let elementById = document.getElementById("date1");
+        var date = elementById.value;
+        if(date === null || date === ''){
+            alert("请选择日期！");
+            document.getElementById("showCarAccount").style.display="none"
+            return
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET' , 'http://localhost:8080/front/place?date='+date);
+        xhr.send();
+        xhr.onreadystatechange = function (){
+            if (xhr.readyState === 4 ){
+                if (xhr.status >= 200 && xhr.status < 300){
+                    // map = new AMap.Map("container", {
+                    //     resizeEnable: true,
+                    //     center: position,
+                    //     zoom: 13
+                    // });
+                    var data=xhr.responseText;
+                    var jsonResponse = JSON.parse(data);
+                    if(jsonResponse === null || jsonResponse === '' || data === '[]'){
+                        alert("该日期没有订单");
+                        document.getElementById("showCarAccount").style.display="none"
+                        return
+                    }
+                    for (var j in jsonResponse){
+                        if (j === "0" ){
+                            position =new AMap.LngLat(jsonResponse[j].lng, jsonResponse[j].lat);
+                            map = new AMap.Map("container", {
+                                resizeEnable: true,
+                                center: position,
+                                zoom: 13
+                            });
+                            totalVolume = jsonResponse[j].volume;
+                            createMarker(jsonResponse[j].lng , jsonResponse[j].lat , jsonResponse[j].name +",体积:" + jsonResponse[j].volume , "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png")
+                        }else {
+                            createMarker(jsonResponse[j].lng , jsonResponse[j].lat , jsonResponse[j].name +",体积:" + jsonResponse[j].volume , "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png")
+                        }
+                    }
+                    document.getElementById("showCarAccount").style.display=""
+                }
+            }
+        }
+    }
+
+    function showCarAccont(){
+        let elementById = document.getElementById("date1");
+        var date = elementById.value;
+        if(date === null || date === ''){
+            alert("请选择日期！");
+            return
+        }
+        document.getElementById("carInformation").style.display="";
+        var carTotalValue = 0;
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET' , 'http://localhost:8080/front/car?date='+date);
+        xhr.send();
+        xhr.onreadystatechange = function (){
+            if (xhr.readyState === 4 ){
+                if (xhr.status >= 200 && xhr.status < 300){
+                    const carText = document.getElementById("carText");
+                    carText.innerText = "";
+                    var data=xhr.responseText;
+                    var jsonResponse = JSON.parse(data);
+                    for (var j in jsonResponse){
+                       console.log("派出体积为:"+jsonResponse[j].volume + "的车"+jsonResponse[j].account+"辆");
+                        carText.innerText=carText.innerText+"派出体积为:"+jsonResponse[j].volume + "的车"+jsonResponse[j].account+"辆"+"\r";
+                        carTotalValue = carTotalValue+jsonResponse[j].volume*jsonResponse[j].account;
+                    }
+                    carText.innerText=carText.innerText+"满载率:"+(totalVolume/carTotalValue*100).toFixed(2)+"%";
+                }
+            }
+
+        }
+    }
+
+    function createMarker(lng,lat,name,icon){
+        marker = new AMap.Marker({
+            icon: icon,//"//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png"
+            position: [lng, lat],
+            offset: new AMap.Pixel(-13, -30)
+        });
+        // 自定义点标记内容
+        var markerContent = document.createElement("div");
+        // 点标记中的图标
+        var markerImg = document.createElement("img");
+        markerImg.className = "markerlnglat";
+        markerImg.src = icon; //"//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png"
+        markerContent.appendChild(markerImg);
+        var markerSpan = document.createElement("span");
+        markerSpan.className = 'marker';
+        markerSpan.innerHTML = name;
+        markerContent.appendChild(markerSpan);
+
+        marker.setContent(markerContent); //更新点标记内容
+        map.add(marker);
+    }
+
+</script>
+</body>
+</html>

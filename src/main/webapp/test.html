@@ -1,0 +1,73 @@
+<html>
+<head>
+    <title>js动态的在页面上增bai加或删除一个文本框</title>
+    <script   type="text/javascript">
+    <!--
+    var   textNumber   =   1;
+    function   addTextBox(form,   afterElement)   {
+    //   Increment   the   textbox   number
+    textNumber++;
+    //   Create   the   label
+    var   p   =   document.createElement("p");
+    p.id="txt"+textNumber;
+    var   label   =   document.createElement("label");
+    //   Create   the   textbox
+    var   textField   =   document.createElement("input");
+    textField.setAttribute("type","text");
+    textField.setAttribute("name","biaozhundaan"+textNumber);
+    textField.setAttribute("id","biaozhundaan"+textNumber);
+    //   Add   the   label's   text
+    label.appendChild(document.createTextNode("第"+textNumber+"空:   "));
+    //   Put   the   textbox   inside(里面)的//把文本框放进去
+    label.appendChild(textField);
+    //   Add   it   all   to   the   form   fengshu
+    p.appendChild(label);
+    var   label   =   document.createElement("label");
+    //   Create   the   textbox
+    var   textField   =   document.createElement("input");
+    textField.setAttribute("type","text");
+    textField.setAttribute("name","pingfengA"+textNumber);
+    textField.setAttribute("id","pingfengA"+textNumber);
+    //   Add   the   label's   text
+    label.appendChild(document.createTextNode("评分词"+textNumber+":   "));
+    //   Put   the   textbox   inside(里面)的//把文本框放进去
+    label.appendChild(textField);
+    //   Add   it   all   to   the   form
+    p.appendChild(label);
+    var   label   =   document.createElement("label");
+    //   Create   the   textbox
+    var   textField   =   document.createElement("input");
+    textField.setAttribute("type","text");
+    textField.setAttribute("name","fengshu"+textNumber);
+    textField.setAttribute("id","fengshu"+textNumber);
+    //   Add   the   label's   text
+    label.appendChild(document.createTextNode("分数"+textNumber+":   "));
+    //   Put   the   textbox   inside(里面)的//把文本框放进去
+    label.appendChild(textField);
+    //   Add   it   all   to   the   form
+    //
+    p.appendChild(label);
+    form.insertBefore(p,afterElement);
+    return   false;
+    }
+    function   removeTextBox(form)   {
+    if   (textNumber   >   1)   {   //   If   there's   more   than   one   text   box
+    //   Remove   the   last   one   added
+    form.removeChild(document.getElementById("txt"+textNumber));
+    textNumber--;
+    }
+    }
+    //-->
+    </script>
+    </head>
+    <body>
+    <form   id="myForm"   method="get"   action="./"   />
+        <label>Text   Box   #1a:   <input   type="text"   name="txt1"   id="txt1"   /></label>
+        <p>
+        <input   type="button"   value="Add   Textbox"   onClick="addTextBox(this.form,this.parentNode);   "   />
+        <input   type="button"   value="Remove   Textbox"   onClick="removeTextBox(this.form)"   />
+        </p>
+        <p><input   type="Submit"   value="Submit"   /></p>
+        </form>
+        </body>
+        </html>

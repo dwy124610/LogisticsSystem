@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>ajaxTest</title>
+    <style>
+        #result{
+            width: 200px;
+            height: 100px;
+            border: aqua 1px;
+        }
+    </style>
+    <script type="text/javascript">
+        <!--
+        var textNumber = 1;
+        function addTextBox(form, afterElement) {
+// Increment the textbox number
+            textNumber++;
+// Create the label
+            var p = document.createElement("p");
+            p.id="end"+textNumber;
+            var label = document.createElement("label");
+// Create the textbox
+            var textField = document.createElement("input");
+            textField.setAttribute("type","text");
+            textField.setAttribute("name","endCity"+textNumber);
+            textField.setAttribute("id","endCity"+textNumber);
+// Add the label's text
+            label.appendChild(document.createTextNode("送货点城市："));
+// Put the textbox inside(里面)的//把文本框放进去
+            label.appendChild(textField);
+// Add it all to the form fengshu
+            p.appendChild(label);
+            var label = document.createElement("label");
+// Create the textbox
+            var textField = document.createElement("input");
+            textField.setAttribute("type","text");
+            textField.setAttribute("name","endPlace"+textNumber);
+            textField.setAttribute("id","endPlace"+textNumber);
+// Add the label's text
+            label.appendChild(document.createTextNode("送货点名称："));
+// Put the textbox inside(里面)的//把文本框放进去
+            label.appendChild(textField);
+// Add it all to the form
+            p.appendChild(label);
+            form.insertBefore(p,afterElement);
+            return false;
+        }
+        function removeTextBox(form) {
+            if (textNumber > 1) { // If there's more than one text box
+// Remove the last one added
+                form.removeChild(document.getElementById("end"+textNumber));
+                textNumber--;
+            }
+        }
+        //-->
+    </script>
+</head>
+<body>
+<span style="width:8rem;">请输入起点：</span><br>
+<span style="width:8rem;">发货点城市：</span>
+<input id="startCity" type="text">
+<span style="width:8rem;">发货点名称：</span>
+<input id="startPlace" type="text"><br>
+<form>
+    <span style="width:8rem;">送货点城市：</span>
+    <label for="endCity1"><input type="text" id="endCity1"></label>
+    <span style="width:8rem;">送货点名称：</span>
+    <label for="endPlace1"><input type="text" id="endPlace1"></label>
+    <p>
+        <input  type="button"  value="增加送货点"  onClick="addTextBox(this.form,this.parentNode);  "  />
+        <input  type="button"  value="减少送货点"  onClick="removeTextBox(this.form)"  />
+    </p>
+    <br>
+    <button id="routePlan">规划路线</button>
+</form>
+<div id="result"></div>
+<script>
+    const routePlanButton = document.getElementById("routePlan");
+    const result = document.getElementById("result");
+    const startCity = document.getElementById("startCity")
+    const startPlace = document.getElementById("startPlace");
+    routePlanButton.onclick = function(){
+        const xhr = new XMLHttpRequest();
+        xhr.sendReq('GET' , 'http://localhost:8080/place/getFirst?keywords='+startPlace.value+'&cityName='+startCity.value)
+        for (var i=1 ; i <= textNumber ; i++) {
+            const xhr = new XMLHttpRequest();
+            const endCity = document.getElementById("endCity"+i);
+            const endPlace = document.getElementById("endPlace"+i);
+            xhr.sendReq('GET' , 'http://localhost:8080/place/getFirst?keywords=' + endPlace.value + '&cityName=' + endCity.value)
+        }
+    }
+</script>
+</body>
