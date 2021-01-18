@@ -2,6 +2,7 @@ package com.dwy.logistics.service;
 
 import com.dwy.logistics.model.dto.front.CarFrontDTO;
 import com.dwy.logistics.model.dto.front.PlaceFrontDTO;
+import com.dwy.logistics.model.dto.front.RouteFrontDTO;
 import com.dwy.logistics.model.dto.front.TransportFrontDTO;
 
 import java.util.Date;
@@ -18,4 +19,6 @@ public interface IFrontService {
     List<CarFrontDTO> getCarFrontDTO(Date date);
 
     List<TransportFrontDTO> getTransportFrontDTO(Date date);
+
+    List<RouteFrontDTO> getRouteFrontDTO(Date date);
 }

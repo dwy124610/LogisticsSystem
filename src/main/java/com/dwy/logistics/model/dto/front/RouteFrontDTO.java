@@ -5,27 +5,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @Author: DongWenYu
- * @Date: 2021/1/13 14:18
+ * @Date: 2021/1/16 15:57
  */
 @Data
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class TransportFrontDTO {
+public class RouteFrontDTO {
 
     private String startName;
-
-    private String endName;
-
     private Double startLng;
-
     private Double startLat;
 
+    private String endName;
     private Double endLng;
-
     private Double endLat;
 
-    private Double volume;
+    private List<TransportFrontDTO> transportInformation ;
+
+    private Double totalVolume;
 }

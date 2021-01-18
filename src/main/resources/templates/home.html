@@ -68,6 +68,26 @@
             height: 6rem;
         }
 
+        .carRoute {
+            flex-direction: column;
+            min-width: 0;
+            word-wrap: break-word;
+            background-color: #fff;
+            background-clip: border-box;
+            border-radius: .25rem;
+            width: 18rem;
+            border-width: 0;
+            border-radius: 0.4rem;
+            box-shadow: 0 2px 6px 0 rgba(114, 124, 245, .5);
+            position: absolute;
+            bottom: 45rem;
+            right: 1rem;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+            padding: 0.75rem 1.25rem;
+            height: 6rem;
+        }
+
         .carTextInformation {
             display: flex;
             flex-direction: column;
@@ -87,27 +107,58 @@
             height: 5em;
         }
 
+        .routeText {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            word-wrap: break-word;
+            background-color: #fff;
+            background-clip: border-box;
+            border-radius: .25rem;
+            width: 18rem;
+            border-width: 0;
+            position: fixed;
+            bottom: 16rem;
+            right: 1rem;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+            padding: 0.75rem 1.25rem;
+            height: 33rem;
+            overflow-y: auto
+        }
+
 
         #box{width:250px;height:300px;border:1px solid #e5e5e5;background:#f1f1f1;}
     </style>
+    <script src="https://a.amap.com/jsapi_demos/static/demo-center/js/demoutils.js"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.15&key=b1c055483940468e4887bd59ef12ab30&plugin=AMap.Driving"></script>
+    <script type="text/javascript" src="https://cache.amap.com/lbs/static/addToolbar.js"></script>
+    <script src="https://webapi.amap.com/ui/1.0/main.js?v=1.0.11"></script>
 </head>
 <body>
 <div id="container"></div>
+<div id="panel"></div>
 <div class="input-card" >
     <label style="color:grey">控制台</label>
     <label style="display: inline-block">日期:</label>
     <input id="date1" class="date1" type="date" style="display: inline-block;position: absolute;top: 33px;left: 45px;width: 130px;height: 18px">
     <div class="input-item">
         <input id="getAllPlacePoint" type="button" class="btn" onclick="getAllPlacePoint()" value="查看送货地点">
-        <input id="showCarAccount" type="button" style="display: none" class="btn" onclick="showCarAccont() " value="分配货车">
+        <input id="showCarAccount" type="button" style="display: none" class="btn" onclick="showCarAccont()" value="分配货车">
+    </div>
+    <div>
+        <input id="showCarRoute" type="button" class="btn" style="display: none" onclick="showCarRoute()" value="查看送货路径规划">
     </div>
 </div>
 <div class="carInformation" style="display: none" id="carInformation">
     <label style="color:grey">派车情况：</label>
     <div  class="carTextInformation" id="carText" ></div>
 </div>
-<script type="text/javascript"
-        src="https://webapi.amap.com/maps?v=1.4.15&key=b1c055483940468e4887bd59ef12ab30"></script>
+
+<div class="carRoute" style="display: none" id="carRoute">
+    <label style="color:grey">路径规划：</label>
+    <div  class="routeText" id="routeText" ></div>
+</div>
 <script type="text/javascript">
     var position = new AMap.LngLat(120.041114, 30.228378);
 
@@ -118,8 +169,17 @@
         zoom: 13
     });
 
+    var driving = new AMap.Driving({
+        map: map,
+        panel: "panel",
+        policy: AMap.DrivingPolicy.LEAST_TIME
+    });
+
     var totalVolume = 0;
     function getAllPlacePoint() {
+        document.getElementById("carInformation").style.display="none"
+        document.getElementById("showCarRoute").style.display="none"
+        document.getElementById("carRoute").style.display="none"
         let elementById = document.getElementById("date1");
         var date = elementById.value;
         if(date === null || date === ''){
@@ -133,16 +193,14 @@
         xhr.onreadystatechange = function (){
             if (xhr.readyState === 4 ){
                 if (xhr.status >= 200 && xhr.status < 300){
-                    // map = new AMap.Map("container", {
-                    //     resizeEnable: true,
-                    //     center: position,
-                    //     zoom: 13
-                    // });
                     var data=xhr.responseText;
                     var jsonResponse = JSON.parse(data);
                     if(jsonResponse === null || jsonResponse === '' || data === '[]'){
                         alert("该日期没有订单");
                         document.getElementById("showCarAccount").style.display="none"
+                        document.getElementById("showCarRoute").style.display="none"
+                        document.getElementById("carInformation").style.display="none"
+                        document.getElementById("carRoute").style.display="none"
                         return
                     }
                     for (var j in jsonResponse){
@@ -173,6 +231,7 @@
             return
         }
         document.getElementById("carInformation").style.display="";
+        document.getElementById("showCarRoute").style.display=""
         var carTotalValue = 0;
         const xhr = new XMLHttpRequest();
         xhr.open('GET' , 'http://localhost:8080/front/car?date='+date);
@@ -185,11 +244,77 @@
                     var data=xhr.responseText;
                     var jsonResponse = JSON.parse(data);
                     for (var j in jsonResponse){
-                       console.log("派出体积为:"+jsonResponse[j].volume + "的车"+jsonResponse[j].account+"辆");
                         carText.innerText=carText.innerText+"派出体积为:"+jsonResponse[j].volume + "的车"+jsonResponse[j].account+"辆"+"\r";
                         carTotalValue = carTotalValue+jsonResponse[j].volume*jsonResponse[j].account;
                     }
                     carText.innerText=carText.innerText+"满载率:"+(totalVolume/carTotalValue*100).toFixed(2)+"%";
+                }
+            }
+
+        }
+    }
+
+    function showCarRoute(){
+        document.getElementById("carRoute").style.display="";
+        let elementById = document.getElementById("date1");
+        var date = elementById.value;
+        if(date === null || date === ''){
+            alert("请选择日期！");
+            return
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET' , 'http://localhost:8080/front/route?date='+date);
+        xhr.send();
+        xhr.onreadystatechange = function (){
+            if (xhr.readyState === 4 ){
+                if (xhr.status >= 200 && xhr.status < 300){
+                    var data=xhr.responseText;
+                    var jsonResponse = JSON.parse(data);
+                    const routeText = document.getElementById("routeText");
+                    var text;
+                    for (var j in jsonResponse){
+                        text ="";
+                        var opts = "";
+                        var volumeList = "";
+                        var nameList="";
+                        var startLng = jsonResponse[j].startLng;
+                        var startLat = jsonResponse[j].startLat;
+                        var endLng = jsonResponse[j].endLng;
+                        var endLat = jsonResponse[j].endLat;
+                        var carVolume = "";
+                        for (var k in jsonResponse[j].transportInformation){
+                            if (k === "0"){
+                                carVolume = jsonResponse[j].totalVolume;
+                                text = text + "派出体积为:"+jsonResponse[j].totalVolume+"的车: "+
+                                    jsonResponse[j].transportInformation[k].startName + " —— 配送体积:" + jsonResponse[j].transportInformation[k].volume+
+                                    " ——> " + jsonResponse[j].transportInformation[k].endName ;
+                                volumeList = volumeList + jsonResponse[j].transportInformation[k].volume;
+                                nameList = nameList + jsonResponse[j].transportInformation[k].startName + "," + jsonResponse[j].transportInformation[k].endName;
+                                if (endLng !==  jsonResponse[j].transportInformation[k].endLng || endLat !==  jsonResponse[j].transportInformation[k].endLat){
+                                    opts = opts + jsonResponse[j].transportInformation[k].endLng + "," + jsonResponse[j].transportInformation[k].endLat;
+                                }
+                            }else {
+                                text = text + " —— 配送体积:" + jsonResponse[j].transportInformation[k].volume+" ——> " +
+                                    jsonResponse[j].transportInformation[k].endName ;
+                                volumeList = volumeList + ","+jsonResponse[j].transportInformation[k].volume;
+                                nameList = nameList + ","+jsonResponse[j].transportInformation[k].endName;
+                                if (endLng !==  jsonResponse[j].transportInformation[k].endLng || endLat !==  jsonResponse[j].transportInformation[k].endLat){
+                                    opts = opts + ","+ jsonResponse[j].transportInformation[k].endLng + "," + jsonResponse[j].transportInformation[k].endLat;
+                                }
+                            }
+                        }
+                        if (opts === ""){
+                            var url = "http://localhost:8080/routeDraw?startLng="+startLng+"&startLat="+startLat+"&endLng="+endLng+"&endLat="+endLat+"&volumeList="+volumeList+"&nameList="+nameList+"&carVolume="+carVolume;
+                        }else {
+                            var url = "http://localhost:8080/routeDraw?startLng="+startLng+"&startLat="+startLat+"&endLng="+endLng+"&endLat="+endLat+"&volumeList="+volumeList+"&nameList="+nameList+"&opts="+opts+"&carVolume="+carVolume;
+                        }
+                        var routeDraw = document.createElement("a")
+                        routeDraw.href = url;
+                        routeDraw.innerHTML = text+"\r";
+                        routeDraw.target="_blank"
+                        routeText.appendChild(routeDraw)
+                        routeText.appendChild(document.createElement("br"))
+                    }
                 }
             }
 
@@ -217,6 +342,8 @@
         marker.setContent(markerContent); //更新点标记内容
         map.add(marker);
     }
+
+
 
 </script>
 </body>

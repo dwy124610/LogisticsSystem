@@ -2,6 +2,7 @@ package com.dwy.logistics.controller;
 
 import com.dwy.logistics.model.dto.front.CarFrontDTO;
 import com.dwy.logistics.model.dto.front.PlaceFrontDTO;
+import com.dwy.logistics.model.dto.front.RouteFrontDTO;
 import com.dwy.logistics.model.dto.front.TransportFrontDTO;
 import com.dwy.logistics.service.IFrontService;
 import com.dwy.logistics.service.IOrdersService;
@@ -41,5 +42,10 @@ public class FrontController {
     @GetMapping("/transport")
     public  List<TransportFrontDTO> getTransportFrontDTO(@RequestParam("date") @DateTimeFormat(pattern = "yyyy-MM-dd") Date date){
         return frontService.getTransportFrontDTO(date);
+    }
+
+    @GetMapping("/route")
+    public  List<RouteFrontDTO> getRouteFrontDTO(@RequestParam("date") @DateTimeFormat(pattern = "yyyy-MM-dd") Date date){
+        return frontService.getRouteFrontDTO(date);
     }
 }

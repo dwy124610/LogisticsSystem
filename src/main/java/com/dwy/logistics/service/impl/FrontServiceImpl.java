@@ -6,6 +6,7 @@ import com.dwy.logistics.mapper.OrdersMapper;
 import com.dwy.logistics.mapper.PlaceMapper;
 import com.dwy.logistics.model.dto.front.CarFrontDTO;
 import com.dwy.logistics.model.dto.front.PlaceFrontDTO;
+import com.dwy.logistics.model.dto.front.RouteFrontDTO;
 import com.dwy.logistics.model.dto.front.TransportFrontDTO;
 import com.dwy.logistics.model.entities.*;
 import com.dwy.logistics.service.IFrontService;
@@ -149,6 +150,8 @@ public class FrontServiceImpl implements IFrontService {
                         transportFrontDTO.setEndLat(firstEndPlaceDTO.getLat());
                         transportFrontDTO.setEndLng(firstEndPlaceDTO.getLng());
                         transportFrontDTO.setVolume(firstEndPlaceDTO.getVolume());
+                        transportFrontDTO.setStartName(startPlaceDTO.getName());
+                        transportFrontDTO.setEndName(firstEndPlaceDTO.getName());
                         origin.setVolume(origin.getVolume()-transportFrontDTO.getVolume());
                         resultList.add(transportFrontDTO);
                         carNowVolume = carNowVolume - firstEndPlaceDTO.getVolume();
@@ -162,6 +165,8 @@ public class FrontServiceImpl implements IFrontService {
                                 transportFrontDTO1.setEndLat(allEndPlaces.get(i).getLat());
                                 transportFrontDTO1.setEndLng(allEndPlaces.get(i).getLng());
                                 transportFrontDTO1.setVolume(allEndPlaces.get(i).getVolume());
+                                transportFrontDTO1.setStartName(startPlaceDTO.getName());
+                                transportFrontDTO1.setEndName(allEndPlaces.get(i).getName());
                                 origin.setVolume(origin.getVolume()-transportFrontDTO1.getVolume());
                                 resultList.add(transportFrontDTO1);
                                 carNowVolume = carNowVolume - allEndPlaces.get(i).getVolume();
@@ -174,6 +179,8 @@ public class FrontServiceImpl implements IFrontService {
                                 transportFrontDTO1.setEndLat(allEndPlaces.get(i).getLat());
                                 transportFrontDTO1.setEndLng(allEndPlaces.get(i).getLng());
                                 transportFrontDTO1.setVolume(carNowVolume);
+                                transportFrontDTO1.setStartName(startPlaceDTO.getName());
+                                transportFrontDTO1.setEndName(allEndPlaces.get(i).getName());
                                 origin.setVolume(origin.getVolume()-transportFrontDTO1.getVolume());
                                 resultList.add(transportFrontDTO1);
                                 allEndPlaces.get(i).setVolume(allEndPlaces.get(i).getVolume() - carNowVolume);
@@ -200,7 +207,54 @@ public class FrontServiceImpl implements IFrontService {
                 break;
             }
         }
+        log.info("resultList:"+resultList);
         return resultList;
+    }
+
+    @Override
+    public List<RouteFrontDTO> getRouteFrontDTO(Date date) {
+        List<RouteFrontDTO> routeFrontDTOS = new ArrayList<>();
+        List<TransportFrontDTO> transportFrontDTOS = getTransportFrontDTO(date);
+        TransportFrontDTO firstTransportFrontDTO = transportFrontDTOS.get(0);
+        double totalVolume = 0.0;
+        for (int i = 0 ; i <transportFrontDTOS.size() ; i++){
+            if (transportFrontDTOS.get(i).getStartName().equals(firstTransportFrontDTO.getStartName())) {
+                RouteFrontDTO routeFrontDTO = new RouteFrontDTO();
+                routeFrontDTO.setTransportInformation(new ArrayList<>());
+                routeFrontDTO.setStartName(transportFrontDTOS.get(i).getStartName());
+                routeFrontDTO.setStartLng(transportFrontDTOS.get(i).getStartLng());
+                routeFrontDTO.setStartLat(transportFrontDTOS.get(i).getStartLat());
+                while (i < transportFrontDTOS.size() - 1) {
+                    if (transportFrontDTOS.get(i).getEndName().equals(transportFrontDTOS.get(i + 1).getStartName())) {
+                        routeFrontDTO.getTransportInformation().add(transportFrontDTOS.get(i));
+                        totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
+                    } else {
+                        routeFrontDTO.setEndLng(transportFrontDTOS.get(i).getEndLng());
+                        routeFrontDTO.setEndLat(transportFrontDTOS.get(i).getEndLat());
+                        routeFrontDTO.setEndName(transportFrontDTOS.get(i).getEndName());
+                        routeFrontDTO.getTransportInformation().add(transportFrontDTOS.get(i));
+                        totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
+                        routeFrontDTO.setTotalVolume(totalVolume);
+                        totalVolume = 0;
+                        routeFrontDTOS.add(routeFrontDTO);
+                        break;
+                    }
+                    i++;
+                }
+                if (i == transportFrontDTOS.size() - 1) {
+                routeFrontDTO.setEndLng(transportFrontDTOS.get(i).getEndLng());
+                routeFrontDTO.setEndLat(transportFrontDTOS.get(i).getEndLat());
+                routeFrontDTO.setEndName(transportFrontDTOS.get(i).getEndName());
+                routeFrontDTO.getTransportInformation().add(transportFrontDTOS.get(i));
+                totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
+                routeFrontDTO.setTotalVolume(totalVolume);
+                totalVolume = 0;
+                routeFrontDTOS.add(routeFrontDTO);
+                }
+            }
+        }
+        log.info("size:"+routeFrontDTOS.size());
+        return routeFrontDTOS;
     }
 
     private List<Map<PlaceFrontDTO, List<PlaceFrontDTO>>> getInDistancePlaceList(List<PlaceFrontDTO> placeFrontDTOS ,double distance , PlaceFrontDTO origin){
@@ -228,6 +282,8 @@ public class FrontServiceImpl implements IFrontService {
                 transportFrontDTO.setEndLat(placeFrontDTO.getLat());
                 transportFrontDTO.setEndLng(placeFrontDTO.getLng());
                 transportFrontDTO.setVolume(carFrontDTO.getVolume());
+                transportFrontDTO.setStartName(startPlaceFrontDTO.getName());
+                transportFrontDTO.setEndName(placeFrontDTO.getName());
                 resultList.add(transportFrontDTO);
                 placeFrontDTO.setVolume(placeFrontDTO.getVolume() - carFrontDTO.getVolume());
                 startPlaceFrontDTO.setVolume(startPlaceFrontDTO.getVolume() - carFrontDTO.getVolume());

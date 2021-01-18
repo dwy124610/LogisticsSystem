@@ -1,0 +1,254 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>拼车动画展示</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css"/>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+        }
+
+        .amap-icon img,
+        .amap-marker-content img{
+            width: 25px;
+            height: 34px;
+        }
+
+        .marker {
+            position: absolute;
+            top: -20px;
+            right: -118px;
+            color: #fff;
+            padding: 4px 10px;
+            box-shadow: 1px 1px 1px rgba(10, 10, 10, .2);
+            white-space: nowrap;
+            font-size: 12px;
+            font-family: "";
+            background-color: #25A5F7;
+            border-radius: 3px;
+        }
+
+        .input-card{
+            width: 18rem;
+            z-index: 170;
+        }
+
+        .input-card .btn{
+            margin-right: .8rem;
+        }
+
+        .input-card .btn:last-child{
+            margin-right: 0;
+        }
+        .carInformation{
+            z-index: 999;
+        }
+
+        .carInformation {
+            flex-direction: column;
+            min-width: 0;
+            word-wrap: break-word;
+            background-color: #fff;
+            background-clip: border-box;
+            border-radius: .25rem;
+            width: 18rem;
+            border-width: 0;
+            border-radius: 0.4rem;
+            box-shadow: 0 2px 6px 0 rgba(114, 124, 245, .5);
+            position: absolute;
+            bottom: 10rem;
+            right: 1rem;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+            padding: 0.75rem 1.25rem;
+            height: 6rem;
+        }
+
+        .carTextInformation {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            word-wrap: break-word;
+            background-color: #fff;
+            background-clip: border-box;
+            border-radius: .25rem;
+            width: 18rem;
+            border-width: 0;
+            position: fixed;
+            bottom: 9rem;
+            right: 1rem;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+            padding: 0.75rem 1.25rem;
+            height: 5em;
+        }
+
+
+        #box{width:250px;height:300px;border:1px solid #e5e5e5;background:#f1f1f1;}
+    </style>
+    <script src="https://a.amap.com/jsapi_demos/static/demo-center/js/demoutils.js"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.15&key=b1c055483940468e4887bd59ef12ab30&plugin=AMap.Driving"></script>
+    <script type="text/javascript" src="https://cache.amap.com/lbs/static/addToolbar.js"></script>
+    <!--引入UI组件库（1.0版本） -->
+    <script src="https://webapi.amap.com/ui/1.0/main.js?v=1.0.11"></script>
+</head>
+<body>
+<div id="container"></div>
+<script type="text/javascript">
+
+    var startLng = getURLParameter('startLng');
+    var startLat = getURLParameter('startLat');
+    var endLng = getURLParameter('endLng');
+    var endLat = getURLParameter('endLat');
+    var opts = getURLParameter('opts');
+    var wayPoints = new Array();
+    var volumeList = getURLParameter('volumeList');
+    var volumes = new Array();
+    var nameList = getURLParameter('nameList');
+    var names = new Array();
+    var carVolume = getURLParameter('carVolume');
+    if (opts !== null) {
+        for (let i = 0; i < opts.split(',').length; i = i + 2) {
+            wayPoints.push(new AMap.LngLat(opts.split(',')[i], opts.split(',')[i + 1]));
+        }
+    }
+    for (let i = 0; i < volumeList.split(',').length; i++) {
+        volumes.push(volumeList.split(',')[i]);
+    }
+    for (let i = 0; i < nameList.split(',').length; i++) {
+        names.push(nameList.split(',')[i]);
+    }
+    var position = new AMap.LngLat(120.041114, 30.228378);
+    var map = new AMap.Map("container", {
+        resizeEnable: true,
+        center: position,
+        zoom: 13
+    });
+
+    var startPoint = new AMap.LngLat(startLng,startLat);
+    var endPoint = new AMap.LngLat(endLng,endLat);
+
+    var driving = new AMap.Driving({
+        map : map,
+    })
+    createRoute(startPoint , endPoint ,wayPoints)
+
+
+    function createRoute(startPoint , endPoint , wayPoints){
+        driving.search(startPoint , endPoint , {
+            waypoints:wayPoints
+        },function (status , result){
+            if (status === 'complete'){
+                if (result.routes && result.routes.length){
+                    var routes = result.routes[0];
+                    var path = parseRouteToPath(routes);
+                    var data = [{
+                        name:'动态路线',
+                        path: path
+                    }];
+                    AMapUI.load(['ui/misc/PathSimplifier' , 'lib/$'], function(PathSimplifier , $) {
+                        if (!PathSimplifier.supportCanvas) {
+                            alert('当前环境不支持Canvas!');
+                            return;
+                        }
+                        var pathSimplifierIns = new PathSimplifier({
+                            zIndex: 300,
+                            autoSetFitView: true,
+                            map: map,
+
+                            getPath: function (pathData, pathIndex) {
+                                return pathData.path;
+                            },
+                            getHoverTitle: function (pathData, pathIndex, pointIndex) {
+
+                                if (pointIndex >= 0) {
+                                    console.log(pathData.name + ',点:' + pointIndex + '/' + pathData.path.length)
+                                    return pathData.name + ',点:' + pointIndex + '/' + pathData.path.length;
+                                }
+                                console.log(pathData.name + ',点数量' + pathData.path.length)
+                                return pathData.name + ',点数量' + pathData.path.length;
+                            },
+                            renderOptions: {
+                                renderAllPointsIfNumberBelow: 100
+                            }
+                        });
+                        pathSimplifierIns.setData(data);
+
+
+                        var navg1 = pathSimplifierIns.createPathNavigator(0, {
+                            loop: false,
+                            speed: 12000
+                        });
+
+                        navg1.start();
+
+                        createMarker(startLng , startLat , "从起点:"+names[0]+"派出体积为:"+carVolume+"的车辆进行货物运输");
+
+                        navg1.on('move', function () {
+                            map.panTo(navg1.getPosition());
+                            for (var o in wayPoints){
+                                arrivePlace(navg1, wayPoints[o].lng , wayPoints[o].lat , "到达目的地:"+names[parseInt(o)+1]+"，完成配送体积为:"+volumes[o]+"的货物")
+                            }
+                            arrivePlace(navg1, endLng , endLat , "到达终点:"+names[names.length-1]+",完成配送体积为:"+volumes[volumes.length-1]+"的货物")
+                            // if (navg1.isCursorAtPathEnd()) {
+                            //     navg1.destory();
+                            // }
+                        });
+                    })
+                }
+            }
+        });
+    }
+    function parseRouteToPath(route){
+        var path = []
+
+        for (var i = 0 , l = route.steps.length ; i <l ; i++){
+            var step = route.steps[i]
+
+            for (var j = 0 , n = step.path.length ; j<n ;j++){
+                path.push(step.path[j])
+            }
+        }
+        return path
+    }
+
+    //解析url路径,获取参数
+    function getURLParameter(name) {
+        return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
+    }
+
+    function createMarker(lng,lat,name){
+        marker = new AMap.Marker({
+            icon: "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+            position: [lng, lat],
+            offset: new AMap.Pixel(-13, -30)
+        });
+        // 自定义点标记内容
+        var markerContent = document.createElement("div");
+        // // 点标记中的图标
+        // var markerImg = document.createElement("img");
+        // markerImg.className = "markerlnglat";
+        // markerImg.src = "//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png"
+        // markerContent.appendChild(markerImg);
+        var markerSpan = document.createElement("span");
+        markerSpan.className = 'marker';
+        markerSpan.innerHTML = name;
+        markerContent.appendChild(markerSpan);
+
+        marker.setContent(markerContent); //更新点标记内容
+        map.add(marker);
+    }
+
+    function arrivePlace(navg1 , lng , lat , name){
+        if (Math.abs(navg1.getPosition().lat -lat) < 0.002 && Math.abs(navg1.getPosition().lng -lng) < 0.002){
+            createMarker(lng , lat , name);
+        }
+    }
+
+</script>
+</body>
+</html>
