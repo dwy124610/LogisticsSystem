@@ -12,7 +12,6 @@ import com.dwy.logistics.model.entities.*;
 import com.dwy.logistics.service.IFrontService;
 import com.dwy.logistics.service.IRouteService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -123,12 +122,12 @@ public class FrontServiceImpl implements IFrontService {
                     List<PlaceFrontDTO> endPlaces = placeFrontDTOListEntry.getValue();
                     List<PlaceFrontDTO> allEndPlaces = new ArrayList<>(endPlaces);
                     allEndPlaces.add(startPlace);
-                    sortPlaceFrontDTOSByDistance(origin,allEndPlaces);
+                    sortPlaceFrontDTOSByDistance(origin,allEndPlaces);//按照与起点的距离排序。
                     double totalVolume = startPlace.getVolume();
                     for (PlaceFrontDTO endPlace : endPlaces){
                         totalVolume = totalVolume+endPlace.getVolume();
                     }
-                    while (totalVolume >= carFrontDTO.getVolume()){
+                    while (totalVolume >= carFrontDTO.getVolume()){ //所有地点加起来的体积大于车的体积才考虑运输
                         PlaceFrontDTO startPlaceDTO = new PlaceFrontDTO();
                         List<PlaceFrontDTO> removeList = new ArrayList<>();
                         startPlaceDTO = origin;
@@ -143,6 +142,7 @@ public class FrontServiceImpl implements IFrontService {
                         if (allEndPlaces.size() == 0){
                             break;
                         }
+                        //运输第一个地点
                         PlaceFrontDTO firstEndPlaceDTO = allEndPlaces.get(0);
                         TransportFrontDTO transportFrontDTO = new TransportFrontDTO();
                         transportFrontDTO.setStartLat(startPlaceDTO.getLat());
@@ -158,7 +158,7 @@ public class FrontServiceImpl implements IFrontService {
                         firstEndPlaceDTO.setVolume(0.0);
                         startPlaceDTO = firstEndPlaceDTO;
                         for (int i = 1 ; i < allEndPlaces.size() ; i++){
-                            if (allEndPlaces.get(i).getVolume() <= carNowVolume){
+                            if (allEndPlaces.get(i).getVolume() <= carNowVolume){ //车子还能运输这个地点
                                 TransportFrontDTO transportFrontDTO1 = new TransportFrontDTO();
                                 transportFrontDTO1.setStartLat(startPlaceDTO.getLat());
                                 transportFrontDTO1.setStartLng(startPlaceDTO.getLng());
@@ -172,7 +172,7 @@ public class FrontServiceImpl implements IFrontService {
                                 carNowVolume = carNowVolume - allEndPlaces.get(i).getVolume();
                                 allEndPlaces.get(i).setVolume(0.0);
                                 startPlaceDTO = allEndPlaces.get(i);
-                            } else {
+                            } else { //车子已满，运输不了这个地点
                                 TransportFrontDTO transportFrontDTO1 = new TransportFrontDTO();
                                 transportFrontDTO1.setStartLat(startPlaceDTO.getLat());
                                 transportFrontDTO1.setStartLng(startPlaceDTO.getLng());
@@ -190,7 +190,7 @@ public class FrontServiceImpl implements IFrontService {
                             }
                         }
                         carFrontDTO.setAccount(carFrontDTO.getAccount()-1);
-                        if (carFrontDTO.getAccount() == 0 ){
+                        if (carFrontDTO.getAccount() == 0 ){ //该型号车用完，换下一辆。
                             carFrontDTOPosition ++;
                             if (carFrontDTOPosition < carFrontDTOS.size()){
                                 carFrontDTO = carFrontDTOS.get(carFrontDTOPosition);
@@ -203,7 +203,7 @@ public class FrontServiceImpl implements IFrontService {
                     }
                 }
             }
-            if ( carFrontDTOPosition >= carFrontDTOS.size()){
+            if ( carFrontDTOPosition >= carFrontDTOS.size()){ //车子全部用完
                 break;
             }
         }
@@ -346,6 +346,9 @@ public class FrontServiceImpl implements IFrontService {
         return totalVolume;
     }
 
+    /*
+    主要想法是动态规划，循环遍历加，如果超出货物体积就扔出循环，减少循环次数，同时比较是不是超出的最小的，是的话记录该值，把这个车子方案记入
+     */
     private Map<List<List<Double>>,Double> getHighestLoadRateList(List<Double> carVolumeList , Double totalVolume){
         //赋初值
         List<List<Double>> doubleListList = new ArrayList<>();

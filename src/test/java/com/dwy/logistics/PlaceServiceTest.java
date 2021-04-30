@@ -36,7 +36,7 @@ public class PlaceServiceTest {
 
     @Test
     public void getFirstPlaceAndInsertTest(){
-        String keywords = "西溪国家湿地公园";
+        String keywords = "杭州电子科技大学";
         String cityName = "杭州市";
         PlaceDTO placeDTO= placeDTOService.getFirstPlaceDTO(keywords,cityName);
         Place place = new Place();

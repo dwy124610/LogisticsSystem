@@ -1,5 +1,10 @@
 package com.dwy.logistics.model.entities;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class TransportKey {
     /**
      *
@@ -32,5 +37,14 @@ public class TransportKey {
      */
     public void setTransportID(Integer transportID) {
         this.transportID = transportID;
+    }
+
+    public static void main(String[] args) {
+        List list = new ArrayList();
+        List list1 = new ArrayList();
+        Collections.addAll(list,1,2,3);
+        Collections.addAll(list1,2,3,4);
+        list.addAll(list1);
+
     }
 }
