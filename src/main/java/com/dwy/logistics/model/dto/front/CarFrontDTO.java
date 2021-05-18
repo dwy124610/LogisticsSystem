@@ -19,6 +19,10 @@ public class CarFrontDTO implements Comparable<CarFrontDTO>{
 
     private Double volume;
 
+    public CarFrontDTO(Double volume , Integer account) {
+        this.account = account;
+        this.volume = volume;
+    }
 
     @Override
     public int compareTo(CarFrontDTO o) {

@@ -87,9 +87,11 @@ public class FrontServiceImpl implements IFrontService {
     public List<CarFrontDTO> getCarFrontDTO(Date date) {
         List<Double> carVolumeList = getCarVolumeList();
         carVolumeList.sort(Comparator.comparing(Double::doubleValue));
-        Map<List<List<Double>>, Double> highestLoadRateListMap = getHighestLoadRateList(carVolumeList, getTotalVolume(date));
-        log.info("highestLoadRateListMap" +highestLoadRateListMap);
-        return getResultList(highestLoadRateListMap);
+//
+        Map<Double, Map<Double, Long>> highestLoadRateMap = getHighestLoadRateMap(carVolumeList, getTotalVolume(date));
+        log.info("highestLoadRateMap" +highestLoadRateMap);
+        Collection<Map<Double, Long>> values = highestLoadRateMap.values();
+        return getResultList(values);
     }
 
     @Override
@@ -348,6 +350,7 @@ public class FrontServiceImpl implements IFrontService {
 
     /*
     主要想法是动态规划，循环遍历加，如果超出货物体积就扔出循环，减少循环次数，同时比较是不是超出的最小的，是的话记录该值，把这个车子方案记入
+    先确定最少需要几辆车
      */
     private Map<List<List<Double>>,Double> getHighestLoadRateList(List<Double> carVolumeList , Double totalVolume){
         //赋初值
@@ -425,6 +428,150 @@ public class FrontServiceImpl implements IFrontService {
     }
 
     /**
+     * <满载率,<体积，个数>>
+     * @param carVolumeList
+     * @param totalVolume
+     * @return java.util.Map<java.util.List<java.util.List<java.lang.Double>>,java.lang.Double>
+     * @create 2021/5/8 9:29
+     */
+    private static Map<Double,Map<Double,Long>> getHighestLoadRateMap(List<Double> carVolumeList , Double totalVolume){
+        Map<Double,Map<Double,Long>> loadRateMap = new HashMap<>();
+        Map<Double, List<Double>> volume = getVolume(totalVolume, carVolumeList);
+        Double highestLoadRateVolume = volume.keySet().iterator().next();
+        List<Double> doubleList = volume.get(highestLoadRateVolume);
+        Map<Double, Long> carMap = doubleList.stream().collect(Collectors.groupingBy(c -> c.doubleValue(), (Collectors.counting())));
+        loadRateMap.put(totalVolume/highestLoadRateVolume,carMap);
+        return loadRateMap;
+    }
+
+//    /**
+//     * 递归求最大装载体积
+//     * @param totalVolume
+//     * @param carVolumeList
+//     * @param
+//     * @return java.lang.Double
+//     * @create 2021/5/8 14:01
+//     */
+//    private  static Double getHighestLoadRateVolume(Double totalVolume, List<Double> carVolumeList)   { //
+//            if (totalVolume < 0 ) {
+//                return totalVolume;
+//            }else {
+//                 return Math.max(Math.max(getHighestLoadRateVolume(totalVolume-carVolumeList.get(0),carVolumeList),
+//                         getHighestLoadRateVolume(totalVolume-carVolumeList.get(1),carVolumeList)),
+//                         getHighestLoadRateVolume(totalVolume-carVolumeList.get(2),carVolumeList));
+//            }
+//        //}
+//    }
+
+    /**
+     * 动态规划求解，将已经算过的赋值到map，下一次只需要在上一次的基础上再加就可以.
+     * 使用i个数，可以有j个解。记录这j个解中大于totalVolume的最小值。
+     * 终止条件为:使用第i+1个数，有k个解，其中有m个解是和j个解不同的，如果这m个解都大于totalVolume程序停止。
+     * @param totalVolume
+     * @param carVolumeList
+     * @return java.lang.Double
+     * @create 2021/5/18 16:58
+     */
+    private  static Map<Double , List<Double>> getVolume(Double totalVolume, List<Double> carVolumeList)   {
+        Map<Double,String> map = new HashMap<>();
+        Map<Double,String> lastMap = new HashMap<>();
+        map.put(0.0,"");
+        Double result = Double.MAX_VALUE;
+        for (int i = 1; i<= carVolumeList.size();i++){
+            while (true){
+                Map<Double,String> addMap = new HashMap();
+                mapCopy(map,addMap);
+                Set<Double> keySet = map.keySet();
+                for (Double aDouble : keySet) {
+                    if (addMap.get(aDouble) != "-1"){
+                        String value;
+                        if (addMap.get(aDouble) != ""){
+                            value = addMap.get(aDouble) + "," + carVolumeList.get(i-1);
+                        }else {
+                            value = String.valueOf(carVolumeList.get(i-1));
+                        }
+                        if(addMap.get(aDouble+carVolumeList.get(i-1)) != null){
+                            int length = String.valueOf(addMap.get(aDouble+carVolumeList.get(i-1))).split(",").length;
+                            if (value.split(",").length < length){
+                                addMap.put(aDouble+carVolumeList.get(i-1) , value);
+                            }
+                        }else {
+                            addMap.put(aDouble+carVolumeList.get(i-1) , value);
+                        }
+                        if (aDouble + carVolumeList.get(i - 1) >= totalVolume) {
+                            result = Math.min(result, aDouble + carVolumeList.get(i - 1));
+                            if (result != aDouble + carVolumeList.get(i - 1)){
+                                addMap.put(aDouble + carVolumeList.get(i - 1) , "-1");
+                            }
+                        }
+                    }
+                }
+                mapCopy(map,lastMap);
+                mapCopy(addMap,map);
+                for (Double aDouble : lastMap.keySet()) {
+                    addMap.remove(aDouble);
+                }
+                if (addMap.keySet().size() == 0 || addMap.keySet().stream().min(Comparator.comparing(Double::doubleValue)).get() >= totalVolume){
+                    break;
+                }
+            }
+
+        }
+        Map<Double , List<Double>> resultMap = new HashMap<>();
+        String s = map.get(result);
+        List<Double> doubleList = Arrays.stream(s.split(",")).map(Double::parseDouble).collect(Collectors.toList());
+        resultMap.put(result,doubleList);
+        return resultMap;
+    }
+    /**
+     * 复制map对象
+     * @explain 将paramsMap中的键值对全部拷贝到resultMap中；
+     * paramsMap中的内容不会影响到resultMap（深拷贝）
+     * @param paramsMap
+     *     被拷贝对象
+     * @param resultMap
+     *     拷贝后的对象
+     */
+    public static void mapCopy(Map paramsMap, Map resultMap) {
+        if (resultMap == null) resultMap = new HashMap();
+        if (paramsMap == null) return;
+
+        Iterator it = paramsMap.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry entry = (Map.Entry) it.next();
+            Object key = entry.getKey();
+            resultMap.put(key, paramsMap.get(key) != null ? paramsMap.get(key) : "");
+
+        }
+    }
+
+//    private  static void getResultList(List<List<Double>> res , List<Double> carVolumeList, Double target, List<Double> list , Integer index) {
+//        if( target == 0){
+//            res.add(new ArrayList<>(list));
+//        }
+//
+//        for (int i =  carVolumeList.size()-1; i >= 0; i--) {
+//            if(carVolumeList.get(i) <= target){
+//                list.add(carVolumeList.get(i));
+//                getResultList(res , carVolumeList, target-carVolumeList.get(i), list, i);
+//                list.remove(list.size()-1);
+//            }
+//        }
+//    }
+
+
+    public static void main(String[] args) {
+        List<Double> carVolumeList = new ArrayList<>();
+        Collections.addAll(carVolumeList,1.0,2.0,3.0);
+//        Map<Double,Integer> carMap = new HashMap<>();
+//        for (Double key : carVolumeList) {
+//            carMap.put(key,0);
+//        }
+//        getHighestLoadRateMap(carVolumeList,10.0);
+        System.out.println(getVolume(6.0, carVolumeList));
+    }
+
+    /**
      * 判断2个集合元素是否相等（可以顺序不相等）
      * @param list
      * @param list1
@@ -437,33 +584,17 @@ public class FrontServiceImpl implements IFrontService {
         return list.toString().equals(list1.toString());
     }
 
-    private  List<CarFrontDTO> getResultList(Map<List<List<Double>>, Double> resultMap){
-        List<Map<Double , Integer>> resultList = new ArrayList<>();
+    private  List<CarFrontDTO> getResultList( Collection<Map<Double, Long>> resultList){
         List<CarFrontDTO> carFrontDTOS = new ArrayList<>();
-        Iterator ResultMapIterator = resultMap.keySet().iterator();
-        while (ResultMapIterator.hasNext()){
-            Iterator listListDoubleIterator = ((List<List<Double>>)ResultMapIterator.next()).iterator();
-            while (listListDoubleIterator.hasNext()){
-                Map<Double , Integer> listIteratorMap = new HashMap<>();
-                List<Double> list = (List<Double>) listListDoubleIterator.next();
-                for(Double d:list){
-                    Integer i = 1; //定义一个计数器，用来记录重复数据的个数
-                    if(listIteratorMap.get(d) != null){
-                        i=listIteratorMap.get(d)+1;
-                    }
-                    listIteratorMap.put(d,i);
-                }
-                resultList.add(listIteratorMap);
+        Iterator<Map<Double, Long>> iterator = resultList.iterator();
+        while (iterator.hasNext()){
+            Map<Double, Long> next = iterator.next();
+            Set<Map.Entry<Double, Long>> entrySet = next.entrySet();
+            Iterator<Map.Entry<Double, Long>> entryIterator = entrySet.iterator();
+            while (entryIterator.hasNext()){
+                Map.Entry<Double, Long> next1 = entryIterator.next();
+                carFrontDTOS.add(new CarFrontDTO(next1.getKey(),Integer.parseInt(String.valueOf(next1.getValue()))));
             }
-        }
-        Map<Double , Integer> map = resultList.get(0);
-        Iterator<Map.Entry<Double , Integer>> entry = map.entrySet().iterator();
-        while (entry.hasNext()){
-            Map.Entry<Double , Integer> entry1 = entry.next();
-            CarFrontDTO carFrontDTO = new CarFrontDTO();
-            carFrontDTO.setVolume(entry1.getKey());
-            carFrontDTO.setAccount(entry1.getValue());
-            carFrontDTOS.add(carFrontDTO);
         }
         return carFrontDTOS;
     }
