@@ -45,4 +45,6 @@ public interface IFrontService {
      * @create 2021/1/18 17:56
      */
     List<RouteFrontDTO> getRouteFrontDTO(Date date);
+
+    List<TransportFrontDTO> getByRegional(Date date);
 }

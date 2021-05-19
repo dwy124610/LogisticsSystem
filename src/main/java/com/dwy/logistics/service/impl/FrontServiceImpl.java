@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,9 +44,136 @@ public class FrontServiceImpl implements IFrontService {
     @Resource
     IRouteService routeService;
 
+    private static Map<Date , List<PlaceFrontDTO>> placeMap = new HashMap<>();
 
     @Override
-    public List<PlaceFrontDTO> getPlaceFrontDTO(Date date) {
+    public  List<TransportFrontDTO> getByRegional(Date date){
+        List<TransportFrontDTO> resultList = new ArrayList<>();
+        List<PlaceFrontDTO> placeFrontDTOS = getPlaceFrontDTO(date);
+        List<CarFrontDTO> carFrontDTOS = getCarFrontDTO(date);
+        PlaceFrontDTO origin = placeFrontDTOS.get(0);
+        placeFrontDTOS.remove(0);
+        Integer times = 1;
+        while (!CollectionUtils.isEmpty(placeFrontDTOS)){
+            Map<String,List<PlaceFrontDTO>> regionalMap = getRegionalMap(placeFrontDTOS,times,origin);
+            Iterator<List<PlaceFrontDTO>> iterator = regionalMap.values().iterator();
+            while (iterator.hasNext()){
+                List<PlaceFrontDTO> next = iterator.next();
+                transport(carFrontDTOS,next,origin,resultList,placeFrontDTOS);
+            }
+            times = times * 2;
+            placeFrontDTOS.removeIf( p -> p.getVolume() == 0);
+        }
+        return resultList;
+    }
+
+    public void transport(List<CarFrontDTO> carFrontDTOS , List<PlaceFrontDTO> next ,PlaceFrontDTO origin , List<TransportFrontDTO> resultList,List<PlaceFrontDTO> placeFrontDTOS){
+        Double volume = 0.0;
+        PlaceFrontDTO start = origin;
+        for (PlaceFrontDTO placeFrontDTO : next) {
+            //计算区域内的体积和
+            volume = volume + placeFrontDTO.getVolume();
+        }
+        for (CarFrontDTO carFrontDTO : carFrontDTOS) {
+            while (carFrontDTO.getAccount() > 0){
+                if (carFrontDTO.getVolume() <= volume){
+                    //达到起送标准,派出一辆车配送
+                    Double remainVolume = carFrontDTO.getVolume();
+                    carFrontDTO.setAccount(carFrontDTO.getAccount()-1);
+                    //通过和起点的距离进行排序
+                    sortPlaceFrontDTOSByDistance(origin,next);
+                    for (PlaceFrontDTO placeFrontDTO : next) {
+                        if (placeFrontDTO.getVolume() > 0){
+                            //需要配送
+                            if (remainVolume > placeFrontDTO.getVolume()){
+                                //当前车辆可以配送,且配送和完后还能继续配送
+                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume());
+                                resultList.add(transportFrontDTO);
+                                remainVolume = remainVolume - placeFrontDTO.getVolume();
+                                volume = volume - placeFrontDTO.getVolume();
+                                placeFrontDTO.setVolume(0.0);
+                                start = placeFrontDTO;
+                            }else {
+                                //当前车辆仅能配送最后这一个地方
+                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,remainVolume);
+                                resultList.add(transportFrontDTO);
+                                placeFrontDTO.setVolume(placeFrontDTO.getVolume()-remainVolume);
+                                volume = volume - remainVolume;
+                                start=origin;
+                                break;
+                            }
+                        }
+                    }
+                }else {
+                    if (carFrontDTOS.stream().filter(c -> c.getAccount() != 0).count() == 1 && carFrontDTO.getAccount() == 1){
+                        //最后一辆车
+                        placeFrontDTOS.removeIf( p -> p.getVolume() == 0);
+                        start = origin;
+                        sortPlaceFrontDTOSByDistance(origin,placeFrontDTOS);
+                        for (PlaceFrontDTO placeFrontDTO : placeFrontDTOS){
+                            if (placeFrontDTO.getVolume() > 0){
+                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume());
+                                resultList.add(transportFrontDTO);
+                                volume = volume - placeFrontDTO.getVolume();
+                                placeFrontDTO.setVolume(0.0);
+                                start = placeFrontDTO;
+                            }
+                        }
+                        carFrontDTO.setAccount(carFrontDTO.getAccount()-1);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    private TransportFrontDTO createTransport(PlaceFrontDTO origin, PlaceFrontDTO placeFrontDTO , Double Volume) {
+        TransportFrontDTO transportFrontDTO = new TransportFrontDTO();
+        transportFrontDTO.setStartName(origin.getName());
+        transportFrontDTO.setEndName(placeFrontDTO.getName());
+        transportFrontDTO.setStartLng(origin.getLng());
+        transportFrontDTO.setStartLat(origin.getLat());
+        transportFrontDTO.setEndLng(origin.getLng());
+        transportFrontDTO.setEndLat(origin.getLat());
+        transportFrontDTO.setVolume(Volume);
+        return transportFrontDTO;
+    }
+
+    public Map<String,List<PlaceFrontDTO>> getRegionalMap(List<PlaceFrontDTO> placeFrontDTOS , Integer times , PlaceFrontDTO origin){
+        Map<String,List<PlaceFrontDTO>> regionalMap = new HashMap<>();
+        Double lng = origin.getLng();
+        Double lat = origin.getLat();
+        placeFrontDTOS.stream().forEach(p -> {
+            Integer x;
+            Integer y;
+//            if ((p.getLat()-lat) > 0){
+//                x = (int)((p.getLat()-lat)/(0.1 * times)) +1;
+//            }else {
+//                x = (int)((p.getLat()-lat)/(0.1 * times)) -1;
+//            }
+            x = (int)((p.getLat()-lat)/(0.1 * times)) ;
+//            if (p.getLng()-lng > 0){
+//                y = (int)((p.getLng()-lng)/(0.1 * times)) +1;
+//            }else {
+//                y = (int)((p.getLng()-lng)/(0.1 * times)) -1;
+//            }
+            y = (int)((p.getLng()-lng)/(0.1 * times));
+            String key = x+","+y;
+            if (regionalMap.get(key) == null){
+                List<PlaceFrontDTO> list = new ArrayList<>();
+                list.add(p);
+                regionalMap.put(key,list);
+            }else {
+                List<PlaceFrontDTO> list = regionalMap.get(key);
+                list.add(p);
+                regionalMap.put(key, list);
+            }
+        });
+        return regionalMap;
+    }
+
+    @Override
+    public List<PlaceFrontDTO> getPlaceFrontDTO(Date date){
         List<PlaceFrontDTO> placeFrontDTOS = new ArrayList<>();
         OrdersExample example = new OrdersExample();
         OrdersExample.Criteria criteria = example.createCriteria();
@@ -93,6 +221,7 @@ public class FrontServiceImpl implements IFrontService {
         Collection<Map<Double, Long>> values = highestLoadRateMap.values();
         return getResultList(values);
     }
+
 
     @Override
     public List<TransportFrontDTO> getTransportFrontDTO(Date date) {
@@ -216,7 +345,8 @@ public class FrontServiceImpl implements IFrontService {
     @Override
     public List<RouteFrontDTO> getRouteFrontDTO(Date date) {
         List<RouteFrontDTO> routeFrontDTOS = new ArrayList<>();
-        List<TransportFrontDTO> transportFrontDTOS = getTransportFrontDTO(date);
+        //List<TransportFrontDTO> transportFrontDTOS = getTransportFrontDTO(date);
+        List<TransportFrontDTO> transportFrontDTOS = getByRegional(date);
         TransportFrontDTO firstTransportFrontDTO = transportFrontDTOS.get(0);
         double totalVolume = 0.0;
         for (int i = 0 ; i <transportFrontDTOS.size() ; i++){
