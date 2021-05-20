@@ -19,8 +19,14 @@ public class FrontTest {
     @Autowired
     FrontServiceImpl frontService;
 
+    private static Long day = 1000*60*60*24L;
     @Test
-    public void test(){
-        frontService.getByRegional(new Date(System.currentTimeMillis()-1000*60*60*24));
+    public void testGetByRegional(){
+        frontService.getByRegional(new Date(System.currentTimeMillis() - day));
+    }
+
+    @Test
+    public void testGetRouteFrontDTO(){
+        frontService.getByRegional(new Date(System.currentTimeMillis()));
     }
 }

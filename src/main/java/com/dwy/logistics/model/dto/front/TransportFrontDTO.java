@@ -28,4 +28,6 @@ public class TransportFrontDTO {
     private Double endLat;
 
     private Double volume;
+
+    private Double carVolume;
 }

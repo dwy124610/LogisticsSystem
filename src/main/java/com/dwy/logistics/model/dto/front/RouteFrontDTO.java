@@ -29,4 +29,6 @@ public class RouteFrontDTO {
     private List<TransportFrontDTO> transportInformation ;
 
     private Double totalVolume;
+
+    private Double carVolume;
 }

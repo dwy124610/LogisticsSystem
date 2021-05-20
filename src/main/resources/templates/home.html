@@ -285,7 +285,7 @@
                         for (var k in jsonResponse[j].transportInformation){
                             if (k === "0"){
                                 carVolume = jsonResponse[j].totalVolume;
-                                text = text + "派出体积为:"+jsonResponse[j].totalVolume+"的车: "+
+                                text = text + "派出体积为:"+jsonResponse[j].carVolume+"的车: "+"装载体积为: "+jsonResponse[j].totalVolume+",起点:"+
                                     jsonResponse[j].transportInformation[k].startName + " —— 配送体积:" + jsonResponse[j].transportInformation[k].volume+
                                     " ——> " + jsonResponse[j].transportInformation[k].endName ;
                                 volumeList = volumeList + jsonResponse[j].transportInformation[k].volume;

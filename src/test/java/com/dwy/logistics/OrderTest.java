@@ -3,6 +3,7 @@ package com.dwy.logistics;
 import com.dwy.logistics.mapper.OrdersMapper;
 import com.dwy.logistics.mapper.PlaceMapper;
 import com.dwy.logistics.model.entities.Orders;
+import com.dwy.logistics.model.entities.OrdersExample;
 import com.dwy.logistics.model.entities.Place;
 import com.dwy.logistics.model.entities.PlaceExample;
 import com.dwy.logistics.service.IOrdersService;
@@ -43,9 +44,17 @@ public class OrderTest {
             orders.setStartPlaceID(startId);
             orders.setEndPlaceID(placeIds.get(random.nextInt(size)));
             orders.setGoodsID(random.nextInt(10)+1);
-            orders.setGoodsNumber(random.nextInt(20)+10);
+            orders.setGoodsNumber(random.nextInt(40)+10);
             orders.setTime(new Date());
             ordersMapper.insert(orders);
         }
+    }
+
+    @Test
+    public void deleteOrder(){
+        OrdersExample ordersExample = new OrdersExample();
+        OrdersExample.Criteria criteria = ordersExample.createCriteria();
+        criteria.andTimeEqualTo(new Date());
+        ordersMapper.deleteByExample(ordersExample);
     }
 }

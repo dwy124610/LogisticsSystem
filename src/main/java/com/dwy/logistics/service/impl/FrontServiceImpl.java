@@ -53,7 +53,7 @@ public class FrontServiceImpl implements IFrontService {
         List<CarFrontDTO> carFrontDTOS = getCarFrontDTO(date);
         PlaceFrontDTO origin = placeFrontDTOS.get(0);
         placeFrontDTOS.remove(0);
-        Integer times = 1;
+        Integer times = 10;
         while (!CollectionUtils.isEmpty(placeFrontDTOS)){
             Map<String,List<PlaceFrontDTO>> regionalMap = getRegionalMap(placeFrontDTOS,times,origin);
             Iterator<List<PlaceFrontDTO>> iterator = regionalMap.values().iterator();
@@ -61,7 +61,7 @@ public class FrontServiceImpl implements IFrontService {
                 List<PlaceFrontDTO> next = iterator.next();
                 transport(carFrontDTOS,next,origin,resultList,placeFrontDTOS);
             }
-            times = times * 2;
+            times = times + 10;
             placeFrontDTOS.removeIf( p -> p.getVolume() == 0);
         }
         return resultList;
@@ -82,12 +82,13 @@ public class FrontServiceImpl implements IFrontService {
                     carFrontDTO.setAccount(carFrontDTO.getAccount()-1);
                     //通过和起点的距离进行排序
                     sortPlaceFrontDTOSByDistance(origin,next);
-                    for (PlaceFrontDTO placeFrontDTO : next) {
+                    List<PlaceFrontDTO> sortPlaces = getSortPlaces(origin, next);
+                    for (PlaceFrontDTO placeFrontDTO : sortPlaces) {
                         if (placeFrontDTO.getVolume() > 0){
                             //需要配送
                             if (remainVolume > placeFrontDTO.getVolume()){
                                 //当前车辆可以配送,且配送和完后还能继续配送
-                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume());
+                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume(),carFrontDTO.getVolume());
                                 resultList.add(transportFrontDTO);
                                 remainVolume = remainVolume - placeFrontDTO.getVolume();
                                 volume = volume - placeFrontDTO.getVolume();
@@ -95,7 +96,7 @@ public class FrontServiceImpl implements IFrontService {
                                 start = placeFrontDTO;
                             }else {
                                 //当前车辆仅能配送最后这一个地方
-                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,remainVolume);
+                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,remainVolume,carFrontDTO.getVolume());
                                 resultList.add(transportFrontDTO);
                                 placeFrontDTO.setVolume(placeFrontDTO.getVolume()-remainVolume);
                                 volume = volume - remainVolume;
@@ -112,7 +113,7 @@ public class FrontServiceImpl implements IFrontService {
                         sortPlaceFrontDTOSByDistance(origin,placeFrontDTOS);
                         for (PlaceFrontDTO placeFrontDTO : placeFrontDTOS){
                             if (placeFrontDTO.getVolume() > 0){
-                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume());
+                                TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume(),carFrontDTO.getVolume());
                                 resultList.add(transportFrontDTO);
                                 volume = volume - placeFrontDTO.getVolume();
                                 placeFrontDTO.setVolume(0.0);
@@ -127,46 +128,67 @@ public class FrontServiceImpl implements IFrontService {
         }
     }
 
-    private TransportFrontDTO createTransport(PlaceFrontDTO origin, PlaceFrontDTO placeFrontDTO , Double Volume) {
+    /**
+     *
+     * @param origin 起点
+     * @param next 区域内所有点的集合
+     * @return void
+     * @create 2021/5/19 17:08
+     */
+    private List<PlaceFrontDTO> getSortPlaces(PlaceFrontDTO origin, List<PlaceFrontDTO> next) {
+        List<PlaceFrontDTO> placeFrontDTOS = new ArrayList<>();
+        placeFrontDTOS.add(origin);
+        for (PlaceFrontDTO placeFrontDTO : next) {
+            Double min = Double.MAX_VALUE;
+            Integer index = 0;
+            for (int i =0 ; i < placeFrontDTOS.size() ;i++) {
+                double distance = getDistance(placeFrontDTO.getLng(), placeFrontDTO.getLat(),
+                        placeFrontDTOS.get(i).getLng(), placeFrontDTOS.get(i).getLat());
+                min = Math.min(min,distance);
+                if (min == distance){
+                    index =  i;
+                }
+            }
+            placeFrontDTOS.add(index +1 , placeFrontDTO);
+        }
+        placeFrontDTOS.remove(0);
+        return placeFrontDTOS;
+    }
+
+    private TransportFrontDTO createTransport(PlaceFrontDTO origin, PlaceFrontDTO placeFrontDTO , Double volume , Double carVolume) {
         TransportFrontDTO transportFrontDTO = new TransportFrontDTO();
         transportFrontDTO.setStartName(origin.getName());
         transportFrontDTO.setEndName(placeFrontDTO.getName());
         transportFrontDTO.setStartLng(origin.getLng());
         transportFrontDTO.setStartLat(origin.getLat());
-        transportFrontDTO.setEndLng(origin.getLng());
-        transportFrontDTO.setEndLat(origin.getLat());
-        transportFrontDTO.setVolume(Volume);
+        transportFrontDTO.setEndLng(placeFrontDTO.getLng());
+        transportFrontDTO.setEndLat(placeFrontDTO.getLat());
+        transportFrontDTO.setVolume(volume);
+        transportFrontDTO.setCarVolume(carVolume);
         return transportFrontDTO;
     }
 
+    /**
+     * 得到区域分割的map， key为坐标，value为当前坐标内的地点
+     * @param placeFrontDTOS
+     * @param times
+     * @param origin
+     * @return java.util.Map<java.lang.String,java.util.List<com.dwy.logistics.model.dto.front.PlaceFrontDTO>>
+     * @create 2021/5/20 9:23
+     */
     public Map<String,List<PlaceFrontDTO>> getRegionalMap(List<PlaceFrontDTO> placeFrontDTOS , Integer times , PlaceFrontDTO origin){
         Map<String,List<PlaceFrontDTO>> regionalMap = new HashMap<>();
         Double lng = origin.getLng();
         Double lat = origin.getLat();
         placeFrontDTOS.stream().forEach(p -> {
-            Integer x;
-            Integer y;
-//            if ((p.getLat()-lat) > 0){
-//                x = (int)((p.getLat()-lat)/(0.1 * times)) +1;
-//            }else {
-//                x = (int)((p.getLat()-lat)/(0.1 * times)) -1;
-//            }
-            x = (int)((p.getLat()-lat)/(0.1 * times)) ;
-//            if (p.getLng()-lng > 0){
-//                y = (int)((p.getLng()-lng)/(0.1 * times)) +1;
-//            }else {
-//                y = (int)((p.getLng()-lng)/(0.1 * times)) -1;
-//            }
-            y = (int)((p.getLng()-lng)/(0.1 * times));
-            String key = x+","+y;
+            int rotateDegrees = getRotateDegrees(lat, lng, p.getLat(), p.getLng())/times*times;
+            String key = rotateDegrees+","+(rotateDegrees+times);
             if (regionalMap.get(key) == null){
-                List<PlaceFrontDTO> list = new ArrayList<>();
-                list.add(p);
-                regionalMap.put(key,list);
+                List<PlaceFrontDTO> placeFrontDTOList = new ArrayList<>();
+                placeFrontDTOList.add(p);
+                regionalMap.put(key,placeFrontDTOList);
             }else {
-                List<PlaceFrontDTO> list = regionalMap.get(key);
-                list.add(p);
-                regionalMap.put(key, list);
+                regionalMap.get(key).add(p);
             }
         });
         return regionalMap;
@@ -349,7 +371,7 @@ public class FrontServiceImpl implements IFrontService {
         List<TransportFrontDTO> transportFrontDTOS = getByRegional(date);
         TransportFrontDTO firstTransportFrontDTO = transportFrontDTOS.get(0);
         double totalVolume = 0.0;
-        for (int i = 0 ; i <transportFrontDTOS.size() ; i++){
+        for (int i = 0; i < transportFrontDTOS.size(); i++) {
             if (transportFrontDTOS.get(i).getStartName().equals(firstTransportFrontDTO.getStartName())) {
                 RouteFrontDTO routeFrontDTO = new RouteFrontDTO();
                 routeFrontDTO.setTransportInformation(new ArrayList<>());
@@ -358,6 +380,7 @@ public class FrontServiceImpl implements IFrontService {
                 routeFrontDTO.setStartLat(transportFrontDTOS.get(i).getStartLat());
                 while (i < transportFrontDTOS.size() - 1) {
                     if (transportFrontDTOS.get(i).getEndName().equals(transportFrontDTOS.get(i + 1).getStartName())) {
+                        //终点名和起点名相同，说明是同一次配送
                         routeFrontDTO.getTransportInformation().add(transportFrontDTOS.get(i));
                         totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
                     } else {
@@ -368,24 +391,26 @@ public class FrontServiceImpl implements IFrontService {
                         totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
                         routeFrontDTO.setTotalVolume(totalVolume);
                         totalVolume = 0;
+                        routeFrontDTO.setCarVolume(transportFrontDTOS.get(i).getCarVolume());
                         routeFrontDTOS.add(routeFrontDTO);
                         break;
                     }
                     i++;
                 }
                 if (i == transportFrontDTOS.size() - 1) {
-                routeFrontDTO.setEndLng(transportFrontDTOS.get(i).getEndLng());
-                routeFrontDTO.setEndLat(transportFrontDTOS.get(i).getEndLat());
-                routeFrontDTO.setEndName(transportFrontDTOS.get(i).getEndName());
-                routeFrontDTO.getTransportInformation().add(transportFrontDTOS.get(i));
-                totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
-                routeFrontDTO.setTotalVolume(totalVolume);
-                totalVolume = 0;
-                routeFrontDTOS.add(routeFrontDTO);
+                    routeFrontDTO.setEndLng(transportFrontDTOS.get(i).getEndLng());
+                    routeFrontDTO.setEndLat(transportFrontDTOS.get(i).getEndLat());
+                    routeFrontDTO.setEndName(transportFrontDTOS.get(i).getEndName());
+                    routeFrontDTO.getTransportInformation().add(transportFrontDTOS.get(i));
+                    totalVolume = totalVolume + transportFrontDTOS.get(i).getVolume();
+                    routeFrontDTO.setTotalVolume(totalVolume);
+                    totalVolume = 0;
+                    routeFrontDTO.setCarVolume(transportFrontDTOS.get(i).getCarVolume());
+                    routeFrontDTOS.add(routeFrontDTO);
                 }
             }
         }
-        log.info("size:"+routeFrontDTOS.size());
+        log.info("size:" + routeFrontDTOS.size());
         return routeFrontDTOS;
     }
 
@@ -691,14 +716,7 @@ public class FrontServiceImpl implements IFrontService {
 
 
     public static void main(String[] args) {
-        List<Double> carVolumeList = new ArrayList<>();
-        Collections.addAll(carVolumeList,1.0,2.0,3.0);
-//        Map<Double,Integer> carMap = new HashMap<>();
-//        for (Double key : carVolumeList) {
-//            carMap.put(key,0);
-//        }
-//        getHighestLoadRateMap(carVolumeList,10.0);
-        System.out.println(getVolume(6.0, carVolumeList));
+        System.out.println(getRotateDegrees(0, 0, 1, -Math.sqrt(3)));
     }
 
     /**
@@ -875,6 +893,23 @@ public class FrontServiceImpl implements IFrontService {
             }
         });
          return placeFrontDTOS;
+    }
+
+    private static int getRotateDegrees(double x1, double y1, double x2, double y2) {
+        double x = (x2 - x1);
+        double y = (y2 - y1);
+        double z = Math.sqrt(x * x + y * y);
+        if (x == 0 && y == 0) {
+            return 0;
+        } else if (y >= 0) {
+            return (int) Math.toDegrees(Math.acos(x / z));
+        } else if (x <= 0 && y < 0) {
+            int jiaodu = (int) Math.toDegrees(Math.atan(y / x));
+            return jiaodu + 180;
+        } else {
+            int jiaodu = (int) Math.toDegrees(Math.atan(y / x));
+            return jiaodu+360;
+        }
     }
 
 
