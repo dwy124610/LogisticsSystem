@@ -22,7 +22,7 @@ public class FrontTest {
     private static Long day = 1000*60*60*24L;
     @Test
     public void testGetByRegional(){
-        frontService.getByRegional(new Date(System.currentTimeMillis() - day));
+        frontService.getByRegional(new Date(System.currentTimeMillis() -day));
     }
 
     @Test

@@ -27,6 +27,11 @@ public class PlaceFrontDTO implements Comparable<PlaceFrontDTO> {
     private Double lat;
 
     private Double volume = 0.0;
+
+    public PlaceFrontDTO(String id) {
+        this.id = id;
+    }
+
     @Override
     public int compareTo(PlaceFrontDTO o) {
         if (this.volume < o.volume) {

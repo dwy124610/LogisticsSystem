@@ -11,6 +11,7 @@ import com.dwy.logistics.model.dto.front.TransportFrontDTO;
 import com.dwy.logistics.model.entities.*;
 import com.dwy.logistics.service.IFrontService;
 import com.dwy.logistics.service.IRouteService;
+import com.dwy.logistics.utils.PermutationUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -81,7 +82,7 @@ public class FrontServiceImpl implements IFrontService {
                     Double remainVolume = carFrontDTO.getVolume();
                     carFrontDTO.setAccount(carFrontDTO.getAccount()-1);
                     //通过和起点的距离进行排序
-                    sortPlaceFrontDTOSByDistance(origin,next);
+                   // sortPlaceFrontDTOSByDistance(origin,next);
                     List<PlaceFrontDTO> sortPlaces = getSortPlaces(origin, next);
                     for (PlaceFrontDTO placeFrontDTO : sortPlaces) {
                         if (placeFrontDTO.getVolume() > 0){
@@ -93,12 +94,14 @@ public class FrontServiceImpl implements IFrontService {
                                 remainVolume = remainVolume - placeFrontDTO.getVolume();
                                 volume = volume - placeFrontDTO.getVolume();
                                 placeFrontDTO.setVolume(0.0);
+                                placeFrontDTOS.stream().filter(p -> p.getId().equals(placeFrontDTO.getId())).forEach(p -> p.setVolume(0.0));
                                 start = placeFrontDTO;
                             }else {
                                 //当前车辆仅能配送最后这一个地方
                                 TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,remainVolume,carFrontDTO.getVolume());
                                 resultList.add(transportFrontDTO);
                                 placeFrontDTO.setVolume(placeFrontDTO.getVolume()-remainVolume);
+                                placeFrontDTOS.stream().filter(p -> p.getId().equals(placeFrontDTO.getId())).forEach(p -> p.setVolume(placeFrontDTO.getVolume()));
                                 volume = volume - remainVolume;
                                 start=origin;
                                 break;
@@ -110,13 +113,14 @@ public class FrontServiceImpl implements IFrontService {
                         //最后一辆车
                         placeFrontDTOS.removeIf( p -> p.getVolume() == 0);
                         start = origin;
-                        sortPlaceFrontDTOSByDistance(origin,placeFrontDTOS);
-                        for (PlaceFrontDTO placeFrontDTO : placeFrontDTOS){
+                        List<PlaceFrontDTO> sortPlaces = getSortPlaces(origin, placeFrontDTOS);
+                        for (PlaceFrontDTO placeFrontDTO : sortPlaces){
                             if (placeFrontDTO.getVolume() > 0){
                                 TransportFrontDTO transportFrontDTO = createTransport(start,placeFrontDTO,placeFrontDTO.getVolume(),carFrontDTO.getVolume());
                                 resultList.add(transportFrontDTO);
                                 volume = volume - placeFrontDTO.getVolume();
                                 placeFrontDTO.setVolume(0.0);
+                                placeFrontDTOS.stream().filter(p -> p.getId().equals(placeFrontDTO.getId())).forEach(p -> p.setVolume(placeFrontDTO.getVolume()));
                                 start = placeFrontDTO;
                             }
                         }
@@ -135,24 +139,69 @@ public class FrontServiceImpl implements IFrontService {
      * @return void
      * @create 2021/5/19 17:08
      */
-    private List<PlaceFrontDTO> getSortPlaces(PlaceFrontDTO origin, List<PlaceFrontDTO> next) {
-        List<PlaceFrontDTO> placeFrontDTOS = new ArrayList<>();
-        placeFrontDTOS.add(origin);
-        for (PlaceFrontDTO placeFrontDTO : next) {
-            Double min = Double.MAX_VALUE;
-            Integer index = 0;
-            for (int i =0 ; i < placeFrontDTOS.size() ;i++) {
-                double distance = getDistance(placeFrontDTO.getLng(), placeFrontDTO.getLat(),
-                        placeFrontDTOS.get(i).getLng(), placeFrontDTOS.get(i).getLat());
-                min = Math.min(min,distance);
-                if (min == distance){
-                    index =  i;
-                }
-            }
-            placeFrontDTOS.add(index +1 , placeFrontDTO);
+    private List<PlaceFrontDTO>  getSortPlaces(PlaceFrontDTO origin, List<PlaceFrontDTO> next) {
+//        List<PlaceFrontDTO> placeFrontDTOS = new ArrayList<>();
+//        placeFrontDTOS.add(origin);
+//        for (PlaceFrontDTO placeFrontDTO : next) {
+//            Double min = Double.MAX_VALUE;
+//            Integer index = 0;
+//            for (int i =0 ; i < placeFrontDTOS.size() ;i++) {
+//                double distance = getDistance(placeFrontDTO.getLng(), placeFrontDTO.getLat(),
+//                        placeFrontDTOS.get(i).getLng(), placeFrontDTOS.get(i).getLat());
+//                min = Math.min(min,distance);
+//                if (min == distance){
+//                    index =  i;
+//                }
+//            }
+//            placeFrontDTOS.add(index +1 , placeFrontDTO);
+//        }
+//        placeFrontDTOS.remove(0);
+//        return placeFrontDTOS;
+        int size = next.size();
+        List<PlaceFrontDTO> roughList = new ArrayList<>();
+        PlaceFrontDTO place = origin;
+        if (size <= 1){
+            return next;
         }
-        placeFrontDTOS.remove(0);
-        return placeFrontDTOS;
+        while (size >= 8){
+            PlaceFrontDTO placeFrontDTO = findMinDistance(place,next);
+            roughList.add(placeFrontDTO);
+            next.remove(placeFrontDTO);
+            size = size -1;
+            place = placeFrontDTO;
+        }
+        next.addAll(0,roughList);
+        List<PlaceFrontDTO> sortPlace = new ArrayList<>();
+        List<List<PlaceFrontDTO>> result = PermutationUtil.getResult(next,roughList.size());
+        double min = Double.MAX_VALUE;
+        for (List<PlaceFrontDTO> placeFrontDTOS : result) {
+            placeFrontDTOS.add(0,origin);
+            double distance = 0.0;
+            for (int i = 0 ; i < placeFrontDTOS.size()-1 ; i++){
+                distance = distance + getDistance(placeFrontDTOS.get(i).getLng(), placeFrontDTOS.get(i).getLat(),
+                  placeFrontDTOS.get(i+1).getLng(), placeFrontDTOS.get(i+1).getLat());
+            }
+            if (distance < min){
+                min = distance;
+                sortPlace.clear();
+                sortPlace.addAll(placeFrontDTOS);
+            }
+        }
+        sortPlace.remove(0);
+        return sortPlace;
+    }
+
+    private PlaceFrontDTO findMinDistance(PlaceFrontDTO origin, List<PlaceFrontDTO> next) {
+        PlaceFrontDTO min = new PlaceFrontDTO();
+        double minDistance = Double.MAX_VALUE;
+        for (PlaceFrontDTO placeFrontDTO : next) {
+            double distance = getDistance(origin.getLng(), origin.getLat(), placeFrontDTO.getLng(), placeFrontDTO.getLat());
+            if (distance < minDistance){
+                minDistance = distance ;
+                min = placeFrontDTO;
+            }
+        }
+        return min;
     }
 
     private TransportFrontDTO createTransport(PlaceFrontDTO origin, PlaceFrontDTO placeFrontDTO , Double volume , Double carVolume) {
