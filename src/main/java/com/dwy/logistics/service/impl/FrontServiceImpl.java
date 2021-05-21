@@ -163,7 +163,7 @@ public class FrontServiceImpl implements IFrontService {
         if (size <= 1){
             return next;
         }
-        while (size >= 8){
+        while (size >= 7){
             PlaceFrontDTO placeFrontDTO = findMinDistance(place,next);
             roughList.add(placeFrontDTO);
             next.remove(placeFrontDTO);

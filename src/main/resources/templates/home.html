@@ -272,6 +272,12 @@
                     var jsonResponse = JSON.parse(data);
                     const routeText = document.getElementById("routeText");
                     var text;
+                    var routeDraw = document.createElement("a")
+                    routeDraw.href = "http://localhost:8080/allRouteDraw?date="+date;
+                    routeDraw.innerHTML = "查看所有路径"+"\r";
+                    routeDraw.target="_blank"
+                    routeText.appendChild(routeDraw)
+                    routeText.appendChild(document.createElement("br"))
                     for (var j in jsonResponse){
                         text ="";
                         var opts = "";
@@ -315,6 +321,7 @@
                         routeText.appendChild(routeDraw)
                         routeText.appendChild(document.createElement("br"))
                     }
+
                 }
             }
 

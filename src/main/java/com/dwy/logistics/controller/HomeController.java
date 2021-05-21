@@ -22,4 +22,8 @@ public class HomeController {
         return "routeDraw";
     }
 
+    @GetMapping("/allRouteDraw")
+    public String allRouteDraw(){
+        return "allRouteDraw";
+    }
 }
