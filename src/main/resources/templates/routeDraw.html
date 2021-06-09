@@ -244,7 +244,7 @@
     }
 
     function arrivePlace(navg1 , lng , lat , name){
-        if (space(navg1.getPosition().lat,navg1.getPosition().lng,lat,lng) < 0.1){
+        if (space(navg1.getPosition().lat,navg1.getPosition().lng,lat,lng) < 0.2){
             createMarker(lng , lat , name);
         }
     }
